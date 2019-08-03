@@ -40,6 +40,8 @@ open class Manager {
     var requests: [RequestID: Request] = [:]
 
     open var callbackURLScheme: String?
+
+    open var callbackQueue: DispatchQueue = .main
     
     #if APP_EXTENSIONS
     /// In case of application extension, put your extensionContext here
@@ -126,7 +128,9 @@ open class Manager {
                 var comp = URLComponents(url: url, resolvingAgainstBaseURL: false)!
                 comp &= error.XCUErrorQuery
                 if let newURL = comp.url {
-                    self.open(url: newURL)
+                    callbackQueue.async {
+                        self.open(url: newURL)
+                    }
                 }
                 return true
             }
@@ -139,7 +143,9 @@ open class Manager {
             var comp = URLComponents(url: url, resolvingAgainstBaseURL: false) {
             handler?(&comp)
             if let newURL = comp.url {
-                self.open(url: newURL)
+                callbackQueue.async {
+                    self.open(url: newURL)
+                }
             }
         }
     }
@@ -246,22 +252,22 @@ open class Manager {
 
     open func open(url: Foundation.URL) {
         #if APP_EXTENSIONS
-            if let extensionContext = extensionContext {
-                extensionContext.open(url, completionHandler: extensionContextCompletionHandler)
-            }
-            else {
-                #if os(iOS) || os(tvOS)
-                    UIApplication.shared.openURL(url)
-                #elseif os(OSX)
-                    NSWorkspace.shared.open(url)
-                #endif
-            }
-        #else
+        if let extensionContext = extensionContext {
+            extensionContext.open(url, completionHandler: extensionContextCompletionHandler)
+        }
+        else {
             #if os(iOS) || os(tvOS)
-                UIApplication.shared.openURL(url)
+            UIApplication.shared.open(url)
             #elseif os(OSX)
-                NSWorkspace.shared.open(url)
+            NSWorkspace.shared.open(url)
             #endif
+        }
+        #else
+        #if os(iOS) || os(tvOS)
+        UIApplication.shared.open(url)
+        #elseif os(OSX)
+        NSWorkspace.shared.open(url)
+        #endif
         #endif
     }
 
