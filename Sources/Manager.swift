@@ -69,6 +69,7 @@ open class Manager {
     }
 
     /// Handle url from app delegate
+    @discardableResult
     open func handleOpen(url: URL) -> Bool {
         if url.scheme != self.callbackURLScheme || url.host != kXCUHost {
             return false
