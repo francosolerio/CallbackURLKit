@@ -249,7 +249,7 @@
 		C4A8D5071C37D84A00DB3306 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1200;
+				LastUpgradeCheck = 1240;
 				ORGANIZATIONNAME = phimage;
 				TargetAttributes = {
 					C418B1D91C386C160097FDD9 = {

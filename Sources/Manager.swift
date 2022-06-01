@@ -42,13 +42,13 @@ open class Manager {
     open var callbackURLScheme: String?
 
     open var callbackQueue: DispatchQueue = .main
-    
+
     #if APP_EXTENSIONS
     /// In case of application extension, put your extensionContext here
     open var extensionContext: NSExtensionContext?
-    open var extensionContextCompletionHandler: ((Bool) -> Swift.Void)? = nil
+    open var extensionContextCompletionHandler: ((Bool) -> Swift.Void)?
     #endif
-    
+
     /// Init
     public init(callbackURLScheme: String? = nil) {
         self.callbackURLScheme = callbackURLScheme
@@ -80,11 +80,11 @@ open class Manager {
 
         let parameters = url.query?.toQueryDictionary ?? [:]
         let actionParameters = Manager.action(parameters: parameters)
-        
+
         // is a reponse?
         if action == kResponse {
             if let requestID = parameters[kRequestID] /*as? RequestID*/, let request = requests[requestID] {
-                
+
                 if let rawType = parameters[kResponseType], let responseType = ResponseType(rawValue: rawType) {
                     switch responseType {
                     case .success:
@@ -94,15 +94,14 @@ open class Manager {
                     case .cancel:
                         request.cancelCallback?()
                     }
-                    
+
                     requests.removeValue(forKey: requestID)
                 }
                 return true
             }
             return false
-        }
-        else if let actionHandler = actions[action] { // handle the action
-            let successCallback: SuccessCallback =  { [weak self] returnParams in
+        } else if let actionHandler = actions[action] { // handle the action
+            let successCallback: SuccessCallback = { [weak self] returnParams in
                 self?.openCallback(parameters, type: .success) { comp in
                     if let query = returnParams?.queryString {
                         comp &= query
@@ -117,15 +116,14 @@ open class Manager {
             let cancelCallback: CancelCallback = { [weak self] in
                 self?.openCallback(parameters, type: .cancel)
             }
-            
+
             actionHandler(actionParameters, successCallback, failureCallback, cancelCallback)
             return true
-        }
-        else {
+        } else {
             // unknown action, notifiy it
             if let errorURLString = parameters[kXCUError], let url = URL(string: errorURLString) {
                 let error = NSError.error(code: .notSupportedAction, failureReason: "\(action) not supported by \(Manager.appName)")
-   
+
                 var comp = URLComponents(url: url, resolvingAgainstBaseURL: false)!
                 comp &= error.XCUErrorQuery
                 if let newURL = comp.url {
@@ -138,8 +136,8 @@ open class Manager {
         }
         return false
     }
-    
-    fileprivate func openCallback(_ parameters: [String : String], type: ResponseType, handler: ((inout URLComponents) -> Void)? = nil ) {
+
+    fileprivate func openCallback(_ parameters: [String: String], type: ResponseType, handler: ((inout URLComponents) -> Void)? = nil ) {
         if let urlString = parameters[type.key], let url = URL(string: urlString),
             var comp = URLComponents(url: url, resolvingAgainstBaseURL: false) {
             handler?(&comp)
@@ -155,7 +153,7 @@ open class Manager {
     public static func handleOpen(url: URL) -> Bool {
         return self.shared.handleOpen(url: url)
     }
-    
+
     // MARK: - perform action with temporary client
 
     /// Perform an action on client application
@@ -178,7 +176,7 @@ open class Manager {
         onSuccess: SuccessCallback? = nil, onFailure: FailureCallback? = nil, onCancel: CancelCallback? = nil) throws {
         try Manager.shared.perform(action: action, urlScheme: urlScheme, parameters: parameters, onSuccess: onSuccess, onFailure: onFailure, onCancel: onCancel)
     }
-    
+
     /// Utility function to get URL schemes from Info.plist
     public static var urlSchemes: [String]? {
         guard let urlTypes = Bundle.main.infoDictionary?["CFBundleURLTypes"] as? [[String: AnyObject]] else {
@@ -195,22 +193,21 @@ open class Manager {
 
     // MARK: internal
 
-
     func send(request: Request) throws {
         if !request.client.appInstalled {
             throw CallbackURLKitError.appWithSchemeNotInstalled(scheme: request.client.urlScheme)
         }
-        
+
         var query: Parameters = [:]
         query[kXCUSource] = Manager.appName
-        
+
         if let scheme = self.callbackURLScheme {
-            
+
             var xcuComponents = URLComponents()
             xcuComponents.scheme = scheme
             xcuComponents.host = kXCUHost
             xcuComponents.path = "/" + kResponse
- 
+
             let xcuParams: Parameters = [kRequestID: request.ID]
 
             for reponseType in request.responseTypes {
@@ -219,13 +216,12 @@ open class Manager {
                     query[reponseType.key] = urlString
                 }
             }
-            
+
             if request.hasCallback {
                 requests[request.ID] = request
             }
 
-        }
-        else if request.hasCallback {
+        } else if request.hasCallback {
             throw CallbackURLKitError.callbackURLSchemeNotDefined
         }
         let components = request.URLComponents(query)
@@ -236,7 +232,7 @@ open class Manager {
         self.open(url: URL)
     }
 
-    static func action(parameters: [String : String]) -> [String : String] {
+    static func action(parameters: [String: String]) -> [String: String] {
         let resultArray: [(String, String)] = parameters.filter { tuple in
             return !(tuple.0.hasPrefix(kXCUPrefix) || protocolKeys.contains(tuple.0))
         }
@@ -255,8 +251,7 @@ open class Manager {
         #if APP_EXTENSIONS
         if let extensionContext = extensionContext {
             extensionContext.open(url, completionHandler: extensionContextCompletionHandler)
-        }
-        else {
+        } else {
             #if os(iOS) || os(tvOS)
             UIApplication.shared.open(url)
             #elseif os(OSX)
@@ -290,7 +285,7 @@ extension Manager {
 
     @objc public func handleURLEvent(_ event: NSAppleEventDescriptor, withReply replyEvent: NSAppleEventDescriptor) {
         if let urlString = event.paramDescriptor(forKeyword: AEKeyword(keyDirectObject))?.stringValue, let url = URL(string: urlString) {
-            let _ = handleOpen(url: url)
+            _ = handleOpen(url: url)
         }
     }
 
